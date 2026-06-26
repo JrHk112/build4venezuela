@@ -1,6 +1,7 @@
 import { gateway } from "@ai-sdk/gateway";
 import { generateObject, zodSchema } from "ai";
 import { z } from "zod";
+import { env } from "@/env";
 import type { ProjectFormInput } from "./schema";
 
 const spamResultSchema = z.object({
@@ -10,7 +11,7 @@ const spamResultSchema = z.object({
 });
 
 export async function checkProjectForSpam(input: ProjectFormInput) {
-  if (!process.env.AI_GATEWAY_API_KEY) {
+  if (!env.AI_GATEWAY_API_KEY) {
     return {
       isSpam: false,
       confidence: 0,

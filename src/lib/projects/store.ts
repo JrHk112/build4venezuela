@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { env } from "@/env";
 import type { Project, ProjectFormInput, ProjectStatus } from "./schema";
 import { normalizeCountries } from "./schema";
 
@@ -39,8 +40,8 @@ const localStorePath = path.join(process.cwd(), ".data", "projects.json");
 const projectSelect = "*, votes_count:project_votes(count)";
 
 function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
     return null;
