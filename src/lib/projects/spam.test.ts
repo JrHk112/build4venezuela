@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
 
 process.env.AI_GATEWAY_API_KEY = "test-ai-gateway-key";
+process.env.SUPABASE_SERVICE_ROLE_KEY = "test-supabase-service-role-key";
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-supabase-anon-key";
 
 const validProject = {
   slug: "civic-dashboard",
