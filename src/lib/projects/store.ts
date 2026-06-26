@@ -36,6 +36,14 @@ type LocalData = {
   votes: { project_id: string; voter_id: string; created_at: string }[];
 };
 
+type StoreErrorDetails = {
+  code?: unknown;
+  details?: unknown;
+  hint?: unknown;
+  message?: unknown;
+  name?: unknown;
+};
+
 const localStorePath = path.join(process.cwd(), ".data", "projects.json");
 const projectSelect = "*, votes_count:project_votes(count)";
 
@@ -101,6 +109,22 @@ async function writeLocalData(data: LocalData) {
   await writeFile(localStorePath, `${JSON.stringify(data, null, 2)}\n`);
 }
 
+function normalizeStoreError(error: unknown) {
+  if (!(error instanceof Error) && typeof error !== "object") {
+    return { message: String(error) };
+  }
+
+  const details = error as StoreErrorDetails;
+
+  return {
+    code: details.code,
+    details: details.details,
+    hint: details.hint,
+    message: details.message,
+    name: details.name,
+  };
+}
+
 async function withLocalFallback<T>(
   operation: () => Promise<T>,
   fallback: () => Promise<T>,
@@ -114,7 +138,10 @@ async function withLocalFallback<T>(
   try {
     return await operation();
   } catch (error) {
-    console.error("Supabase project store failed", error);
+    console.warn(
+      "Supabase project store failed; using local fallback",
+      normalizeStoreError(error),
+    );
     return fallback();
   }
 }
