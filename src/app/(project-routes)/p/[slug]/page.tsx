@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProjectMarkdown } from "@/components/project-markdown";
+import { ProjectVideoEmbed } from "@/components/project-video-embed";
 import {
   canEditProject,
   getProjectBySlug,
@@ -104,6 +105,11 @@ export default async function ProjectPage({ params }: Props) {
           </aside>
 
           <section className="border border-border bg-card p-5 sm:p-8">
+            <ProjectVideoEmbed
+              className="mb-8 bg-background"
+              title={project.name}
+              videoUrl={project.videoUrl}
+            />
             <ProjectMarkdown markdown={project.descriptionMarkdown} />
           </section>
         </div>

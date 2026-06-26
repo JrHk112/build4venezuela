@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { ProjectVideoEmbed } from "@/components/project-video-embed";
 import { createBrowserSupabase } from "@/lib/projects/browser-supabase";
 import type { Project } from "@/lib/projects/schema";
 
@@ -88,12 +89,15 @@ export function RealtimeProjectsGrid({
       </div>
       <div className="grid gap-px bg-border md:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => (
-          <a
+          <article
             className="group bg-background p-6 transition hover:bg-card sm:p-7"
-            href={`/p/${project.slug}`}
             key={project.id}
           >
-            <div className="flex items-center justify-between gap-4">
+            <ProjectVideoEmbed
+              title={project.name}
+              videoUrl={project.videoUrl}
+            />
+            <div className="mt-5 flex items-center justify-between gap-4">
               <p className="font-mono text-xs uppercase tracking-[0.24em] text-muted-foreground">
                 {project.countries.join(" / ")}
               </p>
@@ -101,13 +105,15 @@ export function RealtimeProjectsGrid({
                 {project.votesCount} votes
               </p>
             </div>
-            <h2 className="mt-8 font-mono text-3xl font-black uppercase leading-none tracking-[-0.04em] transition group-hover:text-primary">
-              {project.name}
-            </h2>
+            <a className="block" href={`/p/${project.slug}`}>
+              <h2 className="mt-8 font-mono text-3xl font-black uppercase leading-none tracking-[-0.04em] transition group-hover:text-primary">
+                {project.name}
+              </h2>
+            </a>
             <p className="mt-5 font-mono text-sm uppercase leading-6 tracking-[0.14em] text-muted-foreground">
               {project.participantName}
             </p>
-          </a>
+          </article>
         ))}
       </div>
     </div>
