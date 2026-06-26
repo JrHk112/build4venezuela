@@ -1,0 +1,1 @@
+alter table public.projects alter column video_url set default '';

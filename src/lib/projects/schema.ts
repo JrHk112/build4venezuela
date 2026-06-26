@@ -92,10 +92,18 @@ export const projectFormSchema = z.object({
     .trim()
     .min(2, "Team or participant name is required.")
     .max(120),
-  videoUrl: urlSchema.refine((value) => {
-    const hostname = new URL(value).hostname.toLowerCase();
-    return allowedVideoHosts.includes(hostname);
-  }, "Use YouTube, Vimeo, Loom, Screen Studio, or a similar hosted video link."),
+  videoUrl: z
+    .string()
+    .trim()
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        const hostname = new URL(value).hostname.toLowerCase();
+        return allowedVideoHosts.includes(hostname);
+      } catch {
+        return false;
+      }
+    }, "Use YouTube, Vimeo, Loom, Screen Studio, or a similar hosted video link."),
   descriptionMarkdown: z
     .string()
     .trim()

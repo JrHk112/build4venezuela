@@ -188,14 +188,13 @@ export function ProjectForm({
 
       <label className="grid gap-2" htmlFor="project-video-url">
         <span className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          Demo video link
+          Demo video link (optional)
         </span>
         <Input
           id="project-video-url"
           name="videoUrl"
           onChange={handleValueChange("videoUrl")}
           placeholder="https://youtu.be/..."
-          required
           type="url"
           value={values.videoUrl}
         />

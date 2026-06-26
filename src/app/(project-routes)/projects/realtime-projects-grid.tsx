@@ -112,6 +112,7 @@ export function RealtimeProjectsGrid({
             key={project.id}
           >
             <ProjectVideoEmbed
+              detailHref={`/p/${project.slug}`}
               title={project.name}
               videoUrl={project.videoUrl}
             />
