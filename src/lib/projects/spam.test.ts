@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { checkProjectForSpam } from "./spam";
+
+process.env.AI_GATEWAY_API_KEY = "test-ai-gateway-key";
 
 const validProject = {
   slug: "civic-dashboard",
@@ -13,6 +14,8 @@ const validProject = {
 };
 
 test("spam validation fails closed when AI Gateway API key is missing", async () => {
+  const { checkProjectForSpam } = await import("./spam");
+
   await expect(checkProjectForSpam(validProject, false)).resolves.toEqual({
     isSpam: false,
     confidence: 0,
