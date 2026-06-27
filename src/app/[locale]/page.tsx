@@ -153,6 +153,26 @@ export default async function Home({ params }: Props) {
               {t("hero.description")}
             </p>
             <div className="mt-8 h-px w-full bg-border sm:mt-10" />
+            <div className="mt-6 flex flex-col items-center gap-3 sm:mt-7">
+              <p className="font-mono text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                {t("hero.poweredBy")}
+              </p>
+              <a
+                href="https://www.zavu.dev/"
+                rel="noreferrer"
+                target="_blank"
+                className="transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-background hover:opacity-100"
+              >
+                <Image
+                  alt="Zavu"
+                  className="h-[min(40vw,200px)] w-auto select-none opacity-90 transition hover:opacity-100"
+                  draggable="false"
+                  height={1024}
+                  src={`${assetPath}zavu.svg`}
+                  width={1024}
+                />
+              </a>
+            </div>
           </div>
         </article>
       </section>
