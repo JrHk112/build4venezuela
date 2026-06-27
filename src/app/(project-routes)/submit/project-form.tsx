@@ -216,6 +216,12 @@ export function ProjectForm({
           required
           value={values.descriptionMarkdown}
         />
+        {/* ponytail: red below min (80), muted when valid — mirrors Zod min/max(80, 12000) */}
+        <p
+          className={`font-mono text-xs uppercase tracking-[0.16em] ${values.descriptionMarkdown.length < 80 ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          {values.descriptionMarkdown.length} / 12000
+        </p>
         <FieldError message={errors.descriptionMarkdown} />
       </label>
 

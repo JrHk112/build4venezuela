@@ -120,8 +120,10 @@ export function RealtimeProjectsGrid({
               <p className="font-mono text-xs uppercase tracking-[0.24em] text-muted-foreground">
                 {project.countries.join(" / ")}
               </p>
+              {/* ponytail: singular/plural needed — "1 votes" reads wrong and breaks trust */}
               <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
-                {project.votesCount} votes
+                {project.votesCount}{" "}
+                {project.votesCount === 1 ? "vote" : "votes"}
               </p>
             </div>
             <a className="block" href={`/p/${project.slug}`}>
