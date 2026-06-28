@@ -2,6 +2,7 @@ import { gateway } from "@ai-sdk/gateway";
 import { generateObject, zodSchema } from "ai";
 import { z } from "zod";
 import { env } from "@/env";
+import { logError } from "@/lib/log";
 import type {
   SolutionRequestCommentInput,
   SolutionRequestInput,
@@ -13,6 +14,11 @@ const spamResultSchema = z.object({
   confidence: z.number().min(0).max(1),
   reason: z.string().max(500),
 });
+
+// Bound the gateway call so a slow/stalled LLM request can't hang the whole
+// submit request until Vercel's 300s wall. On timeout the call rejects, the
+// catch below runs, and the submission fails fast with a readable message.
+const SPAM_CHECK_TIMEOUT_MS = 15_000;
 
 export type SpamCheckResult = z.infer<typeof spamResultSchema> & {
   validationPassed: boolean;
@@ -35,6 +41,7 @@ export async function checkProjectForSpam(
     const result = await generateObject({
       model: gateway("anthropic/claude-sonnet-4.6"),
       schema: zodSchema(spamResultSchema),
+      abortSignal: AbortSignal.timeout(SPAM_CHECK_TIMEOUT_MS),
       system:
         "You review hackathon/community project submissions. Flag only clear spam, scams, unrelated ads, malicious links, gibberish, or abusive content. Do not reject legitimate rough drafts or early-stage civic projects.",
       prompt: JSON.stringify(
@@ -55,7 +62,7 @@ export async function checkProjectForSpam(
 
     return { ...result.object, validationPassed: true };
   } catch (error) {
-    console.error("Project spam check failed", error);
+    logError("spam.project", error);
     return {
       isSpam: false,
       confidence: 0,
@@ -82,6 +89,7 @@ export async function checkCommentForSpam(
     const result = await generateObject({
       model: gateway("anthropic/claude-sonnet-4.6"),
       schema: zodSchema(spamResultSchema),
+      abortSignal: AbortSignal.timeout(SPAM_CHECK_TIMEOUT_MS),
       system:
         "You review comments on hackathon/community project submissions. Flag only clear spam, scams, unrelated ads, malicious links, gibberish, harassment, or abusive content. Do not reject concise legitimate feedback, questions, or criticism.",
       prompt: JSON.stringify({ body: input.body }, null, 2),
@@ -89,7 +97,7 @@ export async function checkCommentForSpam(
 
     return { ...result.object, validationPassed: true };
   } catch (error) {
-    console.error("Project comment spam check failed", error);
+    logError("spam.projectComment", error);
     return {
       isSpam: false,
       confidence: 0,
@@ -116,6 +124,7 @@ export async function checkSolutionRequestForSpam(
     const result = await generateObject({
       model: gateway("anthropic/claude-sonnet-4.6"),
       schema: zodSchema(spamResultSchema),
+      abortSignal: AbortSignal.timeout(SPAM_CHECK_TIMEOUT_MS),
       system:
         "You review community solution requests. Flag only clear spam, scams, unrelated ads, malicious links, gibberish, harassment, or abusive content. Do not reject legitimate civic needs, rough drafts, urgent requests, or criticism.",
       prompt: JSON.stringify(
@@ -130,7 +139,7 @@ export async function checkSolutionRequestForSpam(
 
     return { ...result.object, validationPassed: true };
   } catch (error) {
-    console.error("Solution request spam check failed", error);
+    logError("spam.request", error);
     return {
       isSpam: false,
       confidence: 0,
@@ -157,6 +166,7 @@ export async function checkSolutionRequestCommentForSpam(
     const result = await generateObject({
       model: gateway("anthropic/claude-sonnet-4.6"),
       schema: zodSchema(spamResultSchema),
+      abortSignal: AbortSignal.timeout(SPAM_CHECK_TIMEOUT_MS),
       system:
         "You review comments on community solution requests. Flag only clear spam, scams, unrelated ads, malicious links, gibberish, harassment, or abusive content. Do not reject concise legitimate feedback, questions, support offers, or criticism.",
       prompt: JSON.stringify({ body: input.body }, null, 2),
@@ -164,7 +174,7 @@ export async function checkSolutionRequestCommentForSpam(
 
     return { ...result.object, validationPassed: true };
   } catch (error) {
-    console.error("Solution request comment spam check failed", error);
+    logError("spam.requestComment", error);
     return {
       isSpam: false,
       confidence: 0,
