@@ -7,6 +7,10 @@ const requiredServerEnv = {
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
+  // Postgres (Supabase) connection string for Drizzle. Use the pooler URL
+  // (port 6543, transaction mode) in production. Optional: when absent the
+  // project store falls back to the local `.data/*.json` files.
+  DATABASE_URL: z.string().url().optional(),
 };
 
 const requiredClientEnv = {

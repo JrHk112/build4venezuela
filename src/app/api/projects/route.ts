@@ -8,8 +8,44 @@ import {
   rateLimitResponse,
   readJsonObject,
 } from "@/lib/projects/api-security";
+import {
+  BUILTIN_CATEGORY_IDS,
+  decideCategory,
+} from "@/lib/projects/categories";
+import {
+  assignProjectCategory,
+  getCategoryContext,
+} from "@/lib/projects/category-store";
+import { classifyProject } from "@/lib/projects/classify";
+import type { ProjectFormInput } from "@/lib/projects/schema";
 import { createProject, listProjects } from "@/lib/projects/store";
 import { validateProjectSubmission } from "@/lib/projects/submissions";
+
+async function classifyAndStore(
+  projectId: string,
+  data: ProjectFormInput,
+): Promise<void> {
+  try {
+    const { proposals } = await getCategoryContext();
+    const verdict = await classifyProject(data, {
+      pendingProposals: proposals,
+    });
+
+    if (!verdict.validationPassed) {
+      return;
+    }
+
+    const knownIds = new Set<string>([
+      ...BUILTIN_CATEGORY_IDS,
+      ...proposals.map((proposal) => proposal.id),
+    ]);
+    await assignProjectCategory(projectId, decideCategory(verdict, knownIds));
+  } catch (error) {
+    // Classification is best-effort: the list page falls back to the keyword
+    // heuristic for any project without a stored assignment.
+    console.error("Project classification/storage failed", error);
+  }
+}
 
 function displayName(user: Awaited<ReturnType<typeof currentUser>>) {
   return (
@@ -69,6 +105,8 @@ export async function POST(request: Request) {
     spamScore: result.spam.confidence,
     spamReason: result.spam.reason,
   });
+
+  await classifyAndStore(project.id, result.data);
 
   for (const locale of routing.locales) {
     revalidatePath(`/${locale}/projects`);

@@ -2,15 +2,25 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AuthorBadge } from "@/components/author-badge";
 import { ProjectVideoEmbed } from "@/components/project-video-embed";
 import { createBrowserSupabase } from "@/lib/projects/browser-supabase";
+import {
+  categorizeProject,
+  type ResolvedCluster,
+} from "@/lib/projects/categories";
 import { fetchProjects, projectQueryKeys } from "@/lib/projects/queries";
 import { type Project, sortProjectsByVotes } from "@/lib/projects/schema";
 
+type CategoryFilter = string;
+
 type RealtimeProjectsGridProps = {
   initialProjects: Project[];
+  /** Filterable clusters: built-ins plus any graduated proposals. */
+  clusters: ResolvedCluster[];
+  /** project slug -> resolved display cluster id. */
+  assignments: Record<string, string>;
 };
 
 type ProjectVotePayload = {
@@ -19,15 +29,53 @@ type ProjectVotePayload = {
 
 export function RealtimeProjectsGrid({
   initialProjects,
+  clusters,
+  assignments,
 }: RealtimeProjectsGridProps) {
   const locale = useLocale();
   const t = useTranslations("Projects.grid");
   const queryClient = useQueryClient();
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
   const { data: projects = [], isFetching } = useQuery({
     initialData: initialProjects,
     queryFn: fetchProjects,
     queryKey: projectQueryKeys.list(),
   });
+
+  const clusterById = useMemo(
+    () => new Map(clusters.map((cluster) => [cluster.id, cluster])),
+    [clusters],
+  );
+  const tagged = useMemo(
+    () =>
+      projects.map((project) => ({
+        project,
+        // Persisted assignment when present; keyword heuristic covers projects
+        // that arrive via the realtime feed before the page refetches.
+        categoryId: assignments[project.slug] ?? categorizeProject(project),
+      })),
+    [projects, assignments],
+  );
+  const counts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const { categoryId } of tagged) {
+      map.set(categoryId, (map.get(categoryId) ?? 0) + 1);
+    }
+    return map;
+  }, [tagged]);
+  const visibleClusters = useMemo(
+    () => clusters.filter((cluster) => (counts.get(cluster.id) ?? 0) > 0),
+    [clusters, counts],
+  );
+  const visible = useMemo(
+    () =>
+      activeCategory === "all"
+        ? tagged
+        : tagged.filter((entry) => entry.categoryId === activeCategory),
+    [tagged, activeCategory],
+  );
+  const activeMeta =
+    activeCategory === "all" ? null : clusterById.get(activeCategory);
 
   useEffect(() => {
     const supabase = createBrowserSupabase();
@@ -104,17 +152,56 @@ export function RealtimeProjectsGrid({
 
   return (
     <div className="relative">
-      <div className="mb-3 flex justify-end">
+      <div className="mb-6 flex flex-wrap gap-2">
+        <CategoryChip
+          active={activeCategory === "all"}
+          count={projects.length}
+          label="All"
+          onClick={() => setActiveCategory("all")}
+        />
+        {visibleClusters.map((cluster) => (
+          <CategoryChip
+            active={activeCategory === cluster.id}
+            count={counts.get(cluster.id) ?? 0}
+            key={cluster.id}
+            label={cluster.label}
+            onClick={() => setActiveCategory(cluster.id)}
+          />
+        ))}
+      </div>
+
+      {activeMeta ? (
+        <div className="mb-6 border-accent border-l-2 bg-card px-5 py-4">
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-accent">
+            {activeMeta.title}
+          </p>
+          <p className="mt-2 max-w-3xl font-mono text-sm leading-6 tracking-[0.04em] text-muted-foreground">
+            {activeMeta.description}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mb-3 flex justify-between gap-4">
+        <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
+          {visible.length} {visible.length === 1 ? "project" : "projects"}
+        </p>
         <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
           {isFetching ? t("syncing") : t("live")}
         </p>
       </div>
       <div className="grid gap-px bg-border md:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
+        {visible.map(({ project, categoryId }) => (
           <article
             className="group bg-background p-6 transition hover:bg-card sm:p-7"
             key={project.id}
           >
+            <button
+              className="mb-4 inline-flex font-mono text-[0.6rem] font-bold uppercase tracking-[0.24em] text-accent transition hover:text-primary"
+              onClick={() => setActiveCategory(categoryId)}
+              type="button"
+            >
+              {clusterById.get(categoryId)?.label ?? "Other"}
+            </button>
             <ProjectVideoEmbed
               detailHref={`/${locale}/p/${project.slug}`}
               title={project.name}
@@ -145,5 +232,31 @@ export function RealtimeProjectsGrid({
         ))}
       </div>
     </div>
+  );
+}
+
+type CategoryChipProps = {
+  active: boolean;
+  count: number;
+  label: string;
+  onClick: () => void;
+};
+
+function CategoryChip({ active, count, label, onClick }: CategoryChipProps) {
+  return (
+    <button
+      className={`inline-flex items-center gap-2 border px-3 py-2 font-mono text-[0.65rem] font-bold uppercase tracking-[0.18em] transition ${
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      <span>{label}</span>
+      <span className={active ? "text-primary-foreground" : "text-accent"}>
+        {count}
+      </span>
+    </button>
   );
 }

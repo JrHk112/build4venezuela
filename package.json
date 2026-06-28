@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "biome check",
     "test": "bun test",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "db:studio": "bun --env-file=.env.local drizzle-kit studio",
+    "db:pull": "bun --env-file=.env.local drizzle-kit pull"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.2",
@@ -25,8 +27,10 @@
     "ai": "^7.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
     "next": "16.2.9",
     "next-intl": "^4.13.0",
+    "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
@@ -44,6 +48,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
