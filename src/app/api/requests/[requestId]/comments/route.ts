@@ -6,25 +6,28 @@ import {
   rateLimitResponse,
   readJsonObject,
 } from "@/lib/projects/api-security";
-import { projectCommentSchema, validationErrors } from "@/lib/projects/schema";
-import { checkCommentForSpam } from "@/lib/projects/spam";
-import { createComment, listComments } from "@/lib/projects/store";
+import { checkSolutionRequestCommentForSpam } from "@/lib/projects/spam";
+import {
+  solutionRequestCommentSchema,
+  validationErrors,
+} from "@/lib/requests/schema";
+import { createSolutionRequestComment } from "@/lib/requests/store";
 
 type Props = {
-  params: Promise<{ projectId: string }>;
+  params: Promise<{ requestId: string }>;
 };
 
-export async function GET(_request: Request, { params }: Props) {
-  const { projectId } = await params;
-  const { userId } = await auth();
-
-  return NextResponse.json({
-    comments: await listComments(projectId, userId ?? undefined),
-  });
+function displayName(user: Awaited<ReturnType<typeof currentUser>>) {
+  return (
+    user?.fullName ||
+    user?.primaryEmailAddress?.emailAddress ||
+    user?.username ||
+    "Community member"
+  );
 }
 
 export async function POST(request: Request, { params }: Props) {
-  const { projectId } = await params;
+  const { requestId } = await params;
   const { userId } = await auth();
 
   if (!userId) {
@@ -32,8 +35,8 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   const rateLimit = await checkRateLimit({
-    key: rateLimitKey(request, "project:comment", userId),
-    limit: 10,
+    key: rateLimitKey(request, "solution-request:comment", userId),
+    limit: 15,
     windowMs: 10 * 60 * 1000,
   });
 
@@ -47,7 +50,7 @@ export async function POST(request: Request, { params }: Props) {
     return body.response;
   }
 
-  const parsed = projectCommentSchema.safeParse(body.value);
+  const parsed = solutionRequestCommentSchema.safeParse(body.value);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -56,7 +59,7 @@ export async function POST(request: Request, { params }: Props) {
     );
   }
 
-  const spam = await checkCommentForSpam(parsed.data);
+  const spam = await checkSolutionRequestCommentForSpam(parsed.data);
 
   if (!spam.validationPassed) {
     return NextResponse.json({ error: spam.reason }, { status: 503 });
@@ -70,17 +73,12 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   const user = await currentUser();
-  const authorName =
-    user?.fullName ||
-    user?.primaryEmailAddress?.emailAddress ||
-    user?.username ||
-    "Community member";
 
   return NextResponse.json(
-    await createComment(
-      projectId,
+    await createSolutionRequestComment(
+      requestId,
       userId,
-      authorName,
+      displayName(user),
       user?.imageUrl ?? "",
       parsed.data,
     ),

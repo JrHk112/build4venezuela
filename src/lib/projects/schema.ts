@@ -11,6 +11,8 @@ export type Project = {
   videoUrl: string;
   contributeInUrl: string;
   descriptionMarkdown: string;
+  ownerName: string;
+  ownerImageUrl: string;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +23,7 @@ export type ProjectComment = {
   id: string;
   projectId: string;
   authorName: string;
+  authorImageUrl: string;
   body: string;
   createdAt: string;
   updatedAt: string;

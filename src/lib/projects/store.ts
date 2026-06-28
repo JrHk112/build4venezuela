@@ -34,6 +34,8 @@ type ProjectRow = {
   contribute_in_url?: string | null;
   description_markdown: string;
   owner_user_id: string;
+  owner_name?: string | null;
+  owner_image_url?: string | null;
   spam_score: number | null;
   spam_reason: string | null;
   published_at?: string | null;
@@ -44,6 +46,8 @@ type ProjectRow = {
 
 type ProjectWrite = ProjectFormInput & {
   ownerUserId: string;
+  ownerName: string;
+  ownerImageUrl: string;
   spamScore: number;
   spamReason: string;
 };
@@ -53,6 +57,7 @@ type ProjectCommentRow = {
   project_id: string;
   author_user_id: string;
   author_name: string;
+  author_image_url?: string | null;
   body: string;
   created_at: string;
   updated_at: string;
@@ -94,6 +99,8 @@ function rowToProject(
     videoUrl: row.videoUrl,
     contributeInUrl: row.contributeInUrl ?? "",
     descriptionMarkdown: row.descriptionMarkdown,
+    ownerName: row.ownerName || row.participantName,
+    ownerImageUrl: row.ownerImageUrl ?? "",
     publishedAt: (row.publishedAt ?? row.createdAt).toISOString(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -110,6 +117,7 @@ function rowToComment(
     id: row.id,
     projectId: row.projectId,
     authorName: row.authorName,
+    authorImageUrl: row.authorImageUrl ?? "",
     body: row.body,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -132,6 +140,8 @@ function toProject(row: ProjectRow): Project {
     videoUrl: row.video_url,
     contributeInUrl: row.contribute_in_url ?? "",
     descriptionMarkdown: row.description_markdown,
+    ownerName: row.owner_name || row.participant_name,
+    ownerImageUrl: row.owner_image_url ?? "",
     publishedAt: row.published_at ?? row.created_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -144,6 +154,7 @@ function toComment(row: ProjectCommentRow, voted = false): ProjectComment {
     id: row.id,
     projectId: row.project_id,
     authorName: row.author_name,
+    authorImageUrl: row.author_image_url ?? "",
     body: row.body,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -166,6 +177,8 @@ function toLocalRow(
     contribute_in_url: input.contributeInUrl,
     description_markdown: input.descriptionMarkdown,
     owner_user_id: input.ownerUserId,
+    owner_name: input.ownerName,
+    owner_image_url: input.ownerImageUrl,
     spam_score: input.spamScore,
     spam_reason: input.spamReason,
   };
@@ -206,7 +219,9 @@ function normalizeStoreError(error: unknown) {
 
 // Build the project domain shape from an insert/update Drizzle row, where the
 // vote count is fetched separately (insert returns no aggregate).
-function toProjectInput(input: Omit<ProjectWrite, "ownerUserId">) {
+function toProjectInput(
+  input: Omit<ProjectWrite, "ownerUserId" | "ownerName" | "ownerImageUrl">,
+) {
   return {
     slug: input.slug,
     name: input.name,
@@ -321,7 +336,12 @@ export async function createProject(input: ProjectWrite) {
     async () => {
       const [row] = await db
         .insert(projects)
-        .values({ ...toProjectInput(input), ownerUserId: input.ownerUserId })
+        .values({
+          ...toProjectInput(input),
+          ownerUserId: input.ownerUserId,
+          ownerName: input.ownerName,
+          ownerImageUrl: input.ownerImageUrl,
+        })
         .returning();
 
       return rowToProject(row, 0);
@@ -346,7 +366,7 @@ export async function createProject(input: ProjectWrite) {
 
 export async function updateProject(
   projectId: string,
-  input: Omit<ProjectWrite, "ownerUserId">,
+  input: Omit<ProjectWrite, "ownerUserId" | "ownerName" | "ownerImageUrl">,
 ) {
   return withLocalFallback(
     async () => {
@@ -372,9 +392,16 @@ export async function updateProject(
         throw new Error("Project not found.");
       }
 
-      const { owner_user_id: _owner, ...updateRow } = toLocalRow({
+      const {
+        owner_user_id: _owner,
+        owner_name: _ownerName,
+        owner_image_url: _ownerImageUrl,
+        ...updateRow
+      } = toLocalRow({
         ...input,
         ownerUserId: "",
+        ownerName: "",
+        ownerImageUrl: "",
       });
       data.projects[index] = {
         ...data.projects[index],
@@ -581,13 +608,20 @@ export async function createComment(
   projectId: string,
   authorUserId: string,
   authorName: string,
+  authorImageUrl: string,
   input: ProjectCommentInput,
 ) {
   return withLocalFallback(
     async () => {
       const [row] = await db
         .insert(projectComments)
-        .values({ projectId, authorUserId, authorName, body: input.body })
+        .values({
+          projectId,
+          authorUserId,
+          authorName,
+          authorImageUrl,
+          body: input.body,
+        })
         .returning();
 
       return rowToComment(row, 0, false);
@@ -600,6 +634,7 @@ export async function createComment(
         project_id: projectId,
         author_user_id: authorUserId,
         author_name: authorName,
+        author_image_url: authorImageUrl,
         body: input.body,
         created_at: now,
         updated_at: now,

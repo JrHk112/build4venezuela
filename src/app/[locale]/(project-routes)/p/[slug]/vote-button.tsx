@@ -2,6 +2,7 @@
 
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { createBrowserSupabase } from "@/lib/projects/browser-supabase";
@@ -10,6 +11,7 @@ import {
   projectQueryKeys,
   toggleProjectVote,
 } from "@/lib/projects/queries";
+import { type Project, sortProjectsByVotes } from "@/lib/projects/schema";
 
 type VoteButtonProps = {
   projectId: string;
@@ -31,6 +33,7 @@ export function VoteButton({
   initialSignedIn,
   initialVoted,
 }: VoteButtonProps) {
+  const t = useTranslations("Votes");
   const { isSignedIn } = useUser();
   const queryClient = useQueryClient();
   const voteQueryKey = projectQueryKeys.votes(projectId);
@@ -46,28 +49,65 @@ export function VoteButton({
     onError: (
       _error,
       _variables,
-      context: { previousVote?: VoteState } | undefined,
+      context:
+        | { previousProjects?: Project[]; previousVote?: VoteState }
+        | undefined,
     ) => {
       if (context?.previousVote) {
         queryClient.setQueryData(voteQueryKey, context.previousVote);
       }
+      if (context?.previousProjects) {
+        queryClient.setQueryData(
+          projectQueryKeys.list(),
+          context.previousProjects,
+        );
+      }
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: voteQueryKey });
+      await queryClient.cancelQueries({ queryKey: projectQueryKeys.list() });
       const previousVote = queryClient.getQueryData<VoteState>(voteQueryKey);
+      const previousProjects = queryClient.getQueryData<Project[]>(
+        projectQueryKeys.list(),
+      );
       const currentVote = previousVote ?? voteState;
       const nextVote = !currentVote.voted;
+      const delta = nextVote ? 1 : -1;
 
       queryClient.setQueryData<VoteState>(voteQueryKey, {
-        count: Math.max(0, currentVote.count + (nextVote ? 1 : -1)),
+        count: Math.max(0, currentVote.count + delta),
         voted: nextVote,
       });
+      queryClient.setQueryData<Project[]>(projectQueryKeys.list(), (current) =>
+        current
+          ? sortProjectsByVotes(
+              current.map((project) =>
+                project.id === projectId
+                  ? {
+                      ...project,
+                      votesCount: Math.max(0, project.votesCount + delta),
+                    }
+                  : project,
+              ),
+            )
+          : current,
+      );
 
-      return { previousVote };
+      return { previousProjects, previousVote };
     },
     onSuccess: (data) => {
       queryClient.setQueryData(voteQueryKey, data);
-      queryClient.invalidateQueries({ queryKey: projectQueryKeys.list() });
+      queryClient.setQueryData<Project[]>(projectQueryKeys.list(), (current) =>
+        current
+          ? sortProjectsByVotes(
+              current.map((project) =>
+                project.id === projectId
+                  ? { ...project, votesCount: data.count }
+                  : project,
+              ),
+            )
+          : current,
+      );
     },
   });
   const signedIn = isSignedIn ?? initialSignedIn;
@@ -195,7 +235,7 @@ export function VoteButton({
           className="h-12 px-5 text-sm uppercase tracking-[0.18em]"
           type="button"
         >
-          Sign in to vote ({voteState.count})
+          {t("signIn", { count: voteState.count })}
         </Button>
       </SignInButton>
     );
@@ -209,8 +249,8 @@ export function VoteButton({
       type="button"
     >
       {voteState.voted
-        ? `Voted (${voteState.count})`
-        : `Vote (${voteState.count})`}
+        ? t("voted", { count: voteState.count })
+        : t("vote", { count: voteState.count })}
     </Button>
   );
 }

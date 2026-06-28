@@ -34,6 +34,8 @@ export const projects = pgTable(
     contributeInUrl: text("contribute_in_url").notNull().default(""),
     descriptionMarkdown: text("description_markdown").notNull(),
     ownerUserId: text("owner_user_id").notNull(),
+    ownerName: text("owner_name").notNull().default(""),
+    ownerImageUrl: text("owner_image_url").notNull().default(""),
     spamScore: numeric("spam_score", { mode: "number" }),
     spamReason: text("spam_reason"),
     publishedAt: timestamp("published_at", { withTimezone: true }).default(
@@ -73,6 +75,7 @@ export const projectComments = pgTable("project_comments", {
     .references(() => projects.id, { onDelete: "cascade" }),
   authorUserId: text("author_user_id").notNull(),
   authorName: text("author_name").notNull(),
+  authorImageUrl: text("author_image_url").notNull().default(""),
   body: text("body").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

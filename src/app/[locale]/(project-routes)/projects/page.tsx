@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import {
   graduatedProposalIds,
   resolveClusters,
@@ -12,7 +13,17 @@ import { ProjectShell } from "../project-shell";
 import { RealtimeProjectsGrid } from "./realtime-projects-grid";
 import { SubmitProjectCta } from "./submit-project-cta";
 
-export default async function ProjectsPage() {
+// Live data (votes/clusters update in realtime) read via a persistent Drizzle
+// connection — render per request instead of prerendering at build.
+export const dynamic = "force-dynamic";
+
+type Props = {
+  params: Promise<{ locale: string }>;
+};
+
+export default async function ProjectsPage({ params }: Props) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Projects" });
   const [projects, categoryMap, context] = await Promise.all([
     listProjects(),
     getProjectCategoryMap(),
@@ -37,10 +48,10 @@ export default async function ProjectsPage() {
           <div className="mb-10 flex flex-col justify-between gap-6 border-border border-b pb-8 md:flex-row md:items-end">
             <div>
               <p className="font-mono text-sm uppercase tracking-[0.28em] text-accent">
-                Project list
+                {t("eyebrow")}
               </p>
               <h1 className="mt-4 font-mono text-[clamp(3rem,8vw,7rem)] font-black uppercase leading-[0.85] tracking-[-0.07em]">
-                Shipped work
+                {t("title")}
               </h1>
             </div>
             <SubmitProjectCta />

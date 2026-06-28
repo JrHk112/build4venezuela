@@ -1,7 +1,9 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import { AuthorBadge } from "@/components/author-badge";
 import { ProjectVideoEmbed } from "@/components/project-video-embed";
 import { createBrowserSupabase } from "@/lib/projects/browser-supabase";
 import {
@@ -30,6 +32,8 @@ export function RealtimeProjectsGrid({
   clusters,
   assignments,
 }: RealtimeProjectsGridProps) {
+  const locale = useLocale();
+  const t = useTranslations("Projects.grid");
   const queryClient = useQueryClient();
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
   const { data: projects = [], isFetching } = useQuery({
@@ -140,7 +144,7 @@ export function RealtimeProjectsGrid({
     return (
       <div className="border border-border bg-card p-8">
         <p className="font-mono text-lg uppercase leading-8 tracking-[0.14em] text-muted-foreground">
-          No projects yet. Be the first one to add a build.
+          {t("empty")}
         </p>
       </div>
     );
@@ -182,7 +186,7 @@ export function RealtimeProjectsGrid({
           {visible.length} {visible.length === 1 ? "project" : "projects"}
         </p>
         <p className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
-          {isFetching ? "Syncing live feed..." : "Live feed enabled"}
+          {isFetching ? t("syncing") : t("live")}
         </p>
       </div>
       <div className="grid gap-px bg-border md:grid-cols-2 lg:grid-cols-3">
@@ -199,7 +203,7 @@ export function RealtimeProjectsGrid({
               {clusterById.get(categoryId)?.label ?? "Other"}
             </button>
             <ProjectVideoEmbed
-              detailHref={`/p/${project.slug}`}
+              detailHref={`/${locale}/p/${project.slug}`}
               title={project.name}
               videoUrl={project.videoUrl}
             />
@@ -207,18 +211,23 @@ export function RealtimeProjectsGrid({
               <p className="font-mono text-xs uppercase tracking-[0.24em] text-muted-foreground">
                 {project.countries.join(" / ")}
               </p>
+              {/* ponytail: singular/plural needed — "1 votes" reads wrong and breaks trust */}
               <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
-                {project.votesCount} votes
+                {project.votesCount}{" "}
+                {project.votesCount === 1 ? t("vote") : t("votes")}
               </p>
             </div>
-            <a className="block" href={`/p/${project.slug}`}>
+            <a className="block" href={`/${locale}/p/${project.slug}`}>
               <h2 className="mt-8 font-mono text-3xl font-black uppercase leading-none tracking-[-0.04em] transition group-hover:text-primary">
                 {project.name}
               </h2>
             </a>
-            <p className="mt-5 font-mono text-sm uppercase leading-6 tracking-[0.14em] text-muted-foreground">
-              {project.participantName}
-            </p>
+            <AuthorBadge
+              className="mt-5"
+              imageUrl={project.ownerImageUrl}
+              meta={project.participantName}
+              name={project.ownerName || project.participantName}
+            />
           </article>
         ))}
       </div>
