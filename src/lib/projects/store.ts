@@ -249,7 +249,13 @@ function toProjectInput(
   };
 }
 
-async function withLocalFallback<T>(
+// The local JSON fallback only ever applies when there is no database
+// configured at all (local dev without DATABASE_URL — see isDbConfigured()).
+// Once the database is configured, any runtime error from `operation` is
+// logged and re-thrown rather than silently masked by a fallback write/read,
+// so callers (API routes) can turn it into an explicit 500 instead of data
+// quietly diverging from the real database.
+async function withDbOperation<T>(
   operation: () => Promise<T>,
   fallback: () => Promise<T>,
 ) {
@@ -260,15 +266,15 @@ async function withLocalFallback<T>(
   try {
     return await operation();
   } catch (error) {
-    logError("project.store.fallback", error, {
+    logError("project.store.error", error, {
       detail: normalizeStoreError(error),
     });
-    return fallback();
+    throw error;
   }
 }
 
 export async function listProjects() {
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const rows = await db
         .select({ project: projects, votesCount: voteCount })
@@ -300,7 +306,7 @@ export async function listProjects() {
 }
 
 export async function getProjectBySlug(slug: string) {
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const rows = await db
         .select({ project: projects, votesCount: voteCount })
@@ -375,7 +381,7 @@ export async function isSlugAvailable(slug: string, currentProjectId?: string) {
 }
 
 export async function createProject(input: ProjectWrite) {
-  const project = await withLocalFallback(
+  const project = await withDbOperation(
     async () => {
       const [row] = await db
         .insert(projects)
@@ -414,7 +420,7 @@ export async function updateProject(
   projectId: string,
   input: Omit<ProjectWrite, "ownerUserId" | "ownerName" | "ownerImageUrl">,
 ) {
-  const project = await withLocalFallback(
+  const project = await withDbOperation(
     async () => {
       const [row] = await db
         .update(projects)
@@ -471,7 +477,7 @@ export async function canEditProject(
     return false;
   }
 
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const rows = await db
         .select({ id: projects.id })
@@ -494,7 +500,7 @@ export async function canEditProject(
 }
 
 export async function getVoteCount(projectId: string) {
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const rows = await db
         .select({ count: sql<number>`count(*)`.mapWith(Number) })
@@ -515,7 +521,7 @@ export async function hasVoted(projectId: string, voterId: string | undefined) {
     return false;
   }
 
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const rows = await db
         .select({ projectId: projectVotes.projectId })
@@ -540,7 +546,7 @@ export async function hasVoted(projectId: string, voterId: string | undefined) {
 }
 
 export async function toggleVote(projectId: string, voterId: string) {
-  const result = await withLocalFallback(
+  const result = await withDbOperation(
     async () => {
       const voted = await hasVoted(projectId, voterId);
 
@@ -586,7 +592,7 @@ export async function toggleVote(projectId: string, voterId: string) {
 }
 
 export async function listComments(projectId: string, voterId?: string) {
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const rows = await db
         .select({ comment: projectComments, votesCount: commentVoteCount })
@@ -663,7 +669,7 @@ export async function createComment(
   authorImageUrl: string,
   input: ProjectCommentInput,
 ) {
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const [row] = await db
         .insert(projectComments)
@@ -701,7 +707,7 @@ export async function createComment(
 }
 
 export async function getCommentVoteCount(commentId: string) {
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const rows = await db
         .select({ count: sql<number>`count(*)`.mapWith(Number) })
@@ -727,7 +733,7 @@ export async function hasCommentVoted(
     return false;
   }
 
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const rows = await db
         .select({ commentId: projectCommentVotes.commentId })
@@ -752,7 +758,7 @@ export async function hasCommentVoted(
 }
 
 export async function toggleCommentVote(commentId: string, voterId: string) {
-  return withLocalFallback(
+  return withDbOperation(
     async () => {
       const voted = await hasCommentVoted(commentId, voterId);
 
